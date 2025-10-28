@@ -6,7 +6,7 @@
     <br /><br />
     <router-link to="/vueUse">点击跳转至vueUse页面</router-link>
     <br /><br />
-    <router-link to="/request">点击跳转至request请求页面</router-link>
+    <router-link to="/request">点击跳转至request请求页面1</router-link>
 </template>
 
 <script lang="ts">

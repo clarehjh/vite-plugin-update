@@ -1,92 +1,310 @@
-import type { PluginOption } from 'vite';
+import type { PluginOption, ViteDevServer } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+import { updatePromptStyles, createUpdatePrompt } from './checkUpdate';
 
-export default function vitePluginTemplate(): PluginOption {
-  return {
-    // 插件名称
-    name: 'vite-plugin-template',
+export interface UpdatePromptOptions {
+  /**
+   * 是否启用更新提示
+   * @default true
+   */
+  enable?: boolean;
 
-    // pre 会较于 post 先执行
-    enforce: 'post', // post
+  /**
+   * 检查更新的间隔时间（毫秒）
+   * @default 60000
+   */
+  checkInterval?: number;
 
-    // 指明它们仅在 'build' 或 'serve' 模式时调用
-    apply: 'build', // apply 亦可以是一个函数
+  /**
+   * 更新提示标题
+   * @default '🎉 发现新版本'
+   */
+  title?: string;
 
-    // 1. vite 独有的钩子：可以在 vite 被解析之前修改 vite 的相关配置。钩子接收原始用户配置 config 和一个描述配置环境的变量env
-    config(config, { command }) {},
+  /**
+   * 更新提示描述
+   * @default '检测到应用有新版本可用，是否立即更新？'
+   */
+  description?: string;
 
-    // 2. vite 独有的钩子：在解析 vite 配置后调用。使用这个钩子读取和存储最终解析的配置。当插件需要根据运行的命令做一些不同的事情时，它很有用。
-    configResolved(resolvedConfig) {},
+  /**
+   * 确认按钮文本
+   * @default '立即更新'
+   */
+  confirmText?: string;
 
-    // 4. vite 独有的钩子：主要用来配置开发服务器，为 dev-server (connect 应用程序) 添加自定义的中间件
-    configureServer(server) {},
+  /**
+   * 取消按钮文本
+   * @default '稍后提醒'
+   */
+  cancelText?: string;
 
-    // 18的前面. vite 独有的钩子：转换 index.html 的专用钩子。钩子接收当前的 HTML 字符串和转换上下文
-    transformIndexHtml(html) {
-      return html.replace(
-        '</body>',
-        `<script>
-        if (location.hostname !== 'localhost') {
-          async function checkForUpdate() {
-            try {
-              const response = await fetch('/index.html?_=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
-              const newEtag = response.headers.get('ETag');
-              const storedEtag = localStorage.getItem('etag') || '';
-              if (newEtag && newEtag !== storedEtag) {
-                localStorage.setItem('etag', newEtag);
-                console.log('🔄 发现新版本，请刷新页面！');
-              }
-            } catch (error) {
-              console.error('⚠️  更新检查失败:', error);
-            }
-          }
-          setInterval(checkForUpdate, 60000); // 每 60 秒检查一次
-        }
-        </script></body>`,
-      );
-    },
+  /**
+   * 只在生产环境启用
+   * @default true
+   */
+  onlyProduction?: boolean;
 
-    // vite 独有的钩子: 执行自定义HMR更新，可以通过ws往客户端发送自定义的事件
-    handleHotUpdate({ file, server }) {},
+  /**
+   * 使用 PWA 的 Service Worker 更新机制
+   * @default true
+   */
+  usePWA?: boolean;
 
-    // 3. 构建阶段的通用钩子：在服务器启动时被调用：获取、操纵Rollup选项
-    options(options) {},
+  /**
+   * PWA 配置选项
+   */
+  pwaOptions?: {
+    /**
+     * Service Worker 策略
+     * @default 'generateSW'
+     */
+    strategy?: 'generateSW' | 'injectManifest';
 
-    // 5. 构建阶段的通用钩子：在服务器启动时被调用：每次开始构建时调用
-    buildStart(options) {},
+    /**
+     * 是否注册 Service Worker
+     * @default true
+     */
+    registerType?: 'prompt' | 'autoUpdate';
 
-    // 构建阶段的通用钩子：在每个传入模块请求时被调用：创建自定义确认函数，可以用来定位第三方依赖
-    resolveId(source, importer, options) {},
-
-    // 构建阶段的通用钩子：在每个传入模块请求时被调用：可以自定义加载器，可用来返回自定义的内容
-    load(id) {},
-
-    // 构建阶段的通用钩子：在每个传入模块请求时被调用：在每个传入模块请求时被调用，主要是用来转换单个模块
-    transform(code, id) {},
-
-    // 构建阶段的通用钩子：在构建结束后被调用，此处构建只是代表所有模块转义完成
-    buildEnd() {},
-
-    // 输出阶段钩子通用钩子：接受输出参数
-    outputOptions(options) {},
-
-    // 输出阶段钩子通用钩子：每次bundle.generate 和 bundle.write调用时都会被触发。
-    renderStart(outputOptions, inputOptions) {},
-
-    // 输出阶段钩子通用钩子：用来给chunk增加hash
-    augmentChunkHash(chunkInfo) {},
-
-    // 输出阶段钩子通用钩子：转译单个的chunk时触发。rollup输出每一个chunk文件的时候都会调用。
-    renderChunk(code, chunk, options) {
-      return null;
-    },
-
-    // 输出阶段钩子通用钩子：在调用 bundle.write 之前立即触发这个hook
-    generateBundle(options, bundle, isWrite) {},
-
-    // 输出阶段钩子通用钩子：在调用 bundle.write后，所有的chunk都写入文件后，最后会调用一次 writeBundle
-    writeBundle(options, bundle) {},
-
-    // 通用钩子：在服务器关闭时被调用
-    closeBundle() {},
+    /**
+     * Workbox 选项
+     */
+    workbox?: any;
   };
+}
+
+/**
+ * 生成更新检查脚本
+ */
+const generateUpdateScript = (
+  options: Required<Omit<UpdatePromptOptions, 'pwaOptions'>> & {
+    pwaOptions: UpdatePromptOptions['pwaOptions'];
+  },
+) => {
+  const usePWA = options.usePWA;
+
+  if (usePWA) {
+    // 使用 PWA 的更新机制
+    return `
+<script>
+(function() {
+  if (typeof window === 'undefined') return;
+  
+  // 注入样式
+  const style = document.createElement('style');
+  style.textContent = ${JSON.stringify(updatePromptStyles)};
+  document.head.appendChild(style);
+  
+  // 注册 Service Worker（仅在浏览器环境）
+  if ('serviceWorker' in navigator) {
+    let updateAvailable = false;
+    let swRegistration = null;
+    
+    async function registerSW() {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        swRegistration = registration;
+        
+        // 检查是否有更新的 Service Worker 等待
+        if (registration.waiting) {
+          showUpdatePrompt();
+        }
+        
+        // 监听新的 Service Worker 安装
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdatePrompt();
+              }
+            });
+          }
+        });
+        
+        // 监听 Service Worker 控制权变化
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
+      } catch (error) {
+        console.error('Service Worker 注册失败:', error);
+      }
+    }
+    
+    async function showUpdatePrompt() {
+      if (updateAvailable) return;
+      updateAvailable = true;
+      
+      // 移除现有的提示
+      const existing = document.querySelector('.app-update-prompt');
+      if (existing) return;
+      
+      const prompt = ${createUpdatePrompt.toString()};
+      const element = prompt(
+        () => {
+          // 触发更新
+          if (swRegistration && swRegistration.waiting) {
+            swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            setTimeout(() => window.location.reload(), 100);
+          }
+        },
+        () => {
+          updateAvailable = false;
+        },
+        {
+          title: ${JSON.stringify(options.title)},
+          description: ${JSON.stringify(options.description)},
+          confirmText: ${JSON.stringify(options.confirmText)},
+          cancelText: ${JSON.stringify(options.cancelText)}
+        }
+      );
+      document.body.appendChild(element);
+    }
+    
+    // 延迟注册，确保页面加载完成
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', registerSW);
+    } else {
+      registerSW();
+    }
+  }
+})();
+</script>
+`;
+  } else {
+    // 使用简单的 ETag 检查
+    return `
+<script>
+(function() {
+  if (typeof window === 'undefined') return;
+  
+  // 注入样式
+  const style = document.createElement('style');
+  style.textContent = ${JSON.stringify(updatePromptStyles)};
+  document.head.appendChild(style);
+  
+  let updateAvailable = false;
+  
+  async function checkForUpdate() {
+    try {
+      const response = await fetch('/index.html?_=' + Date.now(), {
+        method: 'HEAD',
+        cache: 'no-store'
+      });
+      const newEtag = response.headers.get('ETag');
+      const storedEtag = localStorage.getItem('app-update-etag') || '';
+      
+      if (newEtag && newEtag !== storedEtag && storedEtag !== '') {
+        // 发现新版本
+        localStorage.setItem('app-update-etag', newEtag);
+        showUpdatePrompt();
+      } else if (!storedEtag && newEtag) {
+        // 首次加载，保存 ETag
+        localStorage.setItem('app-update-etag', newEtag);
+      }
+    } catch (error) {
+      console.error('更新检查失败:', error);
+    }
+  }
+  
+  function showUpdatePrompt() {
+    if (updateAvailable) return;
+    updateAvailable = true;
+    
+    const prompt = ${createUpdatePrompt.toString()};
+    const element = prompt(
+      () => {
+        window.location.reload();
+      },
+      () => {
+        updateAvailable = false;
+      },
+      {
+        title: ${JSON.stringify(options.title)},
+        description: ${JSON.stringify(options.description)},
+        confirmText: ${JSON.stringify(options.confirmText)},
+        cancelText: ${JSON.stringify(options.cancelText)}
+      }
+    );
+    document.body.appendChild(element);
+  }
+  
+  // 延迟启动检查
+  setTimeout(() => {
+    checkForUpdate();
+    setInterval(checkForUpdate, ${options.checkInterval});
+  }, 3000);
+})();
+</script>
+`;
+  }
+};
+
+/**
+ * Vite 版本更新提示插件
+ */
+export default function vitePluginUpdate(
+  options: UpdatePromptOptions = {},
+): PluginOption[] {
+  const {
+    enable = true,
+    checkInterval = 60000,
+    title = '🎉 发现新版本',
+    description = '检测到应用有新版本可用，是否立即更新？',
+    confirmText = '立即更新',
+    cancelText = '稍后提醒',
+    onlyProduction = true,
+    usePWA = true,
+    pwaOptions = {},
+  } = options;
+
+  const opts = {
+    enable,
+    checkInterval,
+    title,
+    description,
+    confirmText,
+    cancelText,
+    onlyProduction,
+    usePWA,
+    pwaOptions,
+  };
+
+  const plugins: PluginOption[] = [];
+
+  // 根据配置决定是否添加 PWA 插件
+  if (usePWA && enable) {
+    plugins.push(
+      VitePWA({
+        registerType: pwaOptions.registerType || 'prompt',
+        strategies: pwaOptions.strategy || 'generateSW',
+        workbox: {
+          cleanupOutdatedCaches: true,
+          ...pwaOptions.workbox,
+        },
+      }),
+    );
+  }
+
+  // 添加更新检查插件
+  if (enable) {
+    plugins.push({
+      name: 'vite-plugin-update-prompt',
+      enforce: 'post',
+      apply(config, { command }) {
+        // 如果设置了 onlyProduction，只在 build 时应用
+        if (onlyProduction && command === 'serve') {
+          return false;
+        }
+        return true;
+      },
+      transformIndexHtml(html) {
+        const scripts = generateUpdateScript(opts);
+        return html.replace('</body>', `${scripts}</body>`);
+      },
+    });
+  }
+
+  return plugins;
 }

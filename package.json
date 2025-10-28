@@ -1,14 +1,18 @@
 {
   "name": "vite-plugin-update",
   "version": "1.0.0",
-  "description": "版本更新提示",
+  "description": "版本更新提示插件，基于 vite-plugin-pwa 二次封装的友好更新提示组件",
   "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "pnpm run build --watch --ignore-watch examples",
-    "build": "tsup src/index.ts --dts --format cjs,esm",
+    "build": "node scripts/build.js",
     "example:react": "cd examples/vite-react && pnpm run build",
     "example:vue2": "cd examples/vite-vue2 && pnpm run build",
     "example:vue3": "cd examples/vite-vue3 && pnpm run build"
@@ -16,16 +20,22 @@
   "keywords": [
     "vite",
     "plugin",
-    "update"
+    "update",
+    "pwa",
+    "service-worker",
+    "version-update",
+    "prompt"
   ],
   "author": "clarehjh",
   "license": "MIT",
+  "dependencies": {
+    "vite-plugin-pwa": "^0.21.1"
+  },
   "devDependencies": {
-    "vite-plugin-pwa": "^0.21.1",
-    "vitest": "^0.25.0",
     "@types/node": "^17.0.35",
     "@typescript-eslint/eslint-plugin": "^5.26.0",
     "@typescript-eslint/parser": "^5.26.0",
+    "archiver": "^7.0.1",
     "bumpp": "^7.1.1",
     "eslint": "^8.16.0",
     "eslint-config-prettier": "^8.5.0",
@@ -33,6 +43,10 @@
     "prettier": "^2.6.2",
     "tsup": "^6.0.1",
     "typescript": "^4.7.2",
-    "vite": "*"
+    "vite": "*",
+    "vitest": "^0.25.0"
+  },
+  "peerDependencies": {
+    "vite": "^3.0.0 || ^4.0.0 || ^5.0.0"
   }
 }
