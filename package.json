@@ -26,6 +26,10 @@
     "version-update",
     "prompt"
   ],
+    "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clarehjh/vite-plugin-update .git"
+  },
   "author": "clarehjh",
   "license": "MIT",
   "dependencies": {
